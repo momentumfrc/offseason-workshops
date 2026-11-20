@@ -44,6 +44,11 @@ public class shooterSubsystem extends SubsystemBase {
     private DoubleEntry kI;
     private DoubleEntry kD;
 
+    //last PID values sent to the hood SPARK MAX, used to detect changes from the dashboard
+    private double lastKP;
+    private double lastKI;
+    private double lastKD;
+
     public shooterSubsystem() {
         //create network tables
         NetworkTableInstance shooterTable = NetworkTableInstance.getDefault();
@@ -60,14 +65,14 @@ public class shooterSubsystem extends SubsystemBase {
         kI = shooterTable2.getDoubleTopic("kI").getEntry(0);
         kD = shooterTable2.getDoubleTopic("kD").getEntry(0);
 
-        //do .set() for all of em to make an acutal default value
-        shooterSpeed.set(0);
-        changeShooterSpeed.set(0);
-        hoodPosition.set(0);
-        changeHoodPosition.set(0);
-        kP.set(0);
-        kI.set(0);
-        kD.set(0);
+        //setDefault() only sets a value if none exists yet, so values typed in Elastic aren't wiped on reboot
+        shooterSpeed.setDefault(0);
+        changeShooterSpeed.setDefault(0);
+        hoodPosition.setDefault(0);
+        changeHoodPosition.setDefault(0);
+        kP.setDefault(0);
+        kI.setDefault(0);
+        kD.setDefault(0);
 
         //define motor and motorconfig for flwheel
         flywheel = new SparkMax(7, MotorType.kBrushless);
@@ -79,8 +84,12 @@ public class shooterSubsystem extends SubsystemBase {
         //define motors and motorconfig for hood, set PID, and make idle brake
         hood = new SparkMax(8, MotorType.kBrushless);
         
+        lastKP = kP.get();
+        lastKI = kI.get();
+        lastKD = kD.get();
+
         hoodConfig = new SparkMaxConfig();
-        hoodConfig.closedLoop.pid(kP.get(), kI.get(), kD.get());
+        hoodConfig.closedLoop.pid(lastKP, lastKI, lastKD);
         hoodConfig.closedLoop.outputRange(-0.5, 0.5);
         hoodConfig.idleMode(IdleMode.kBrake);
 
@@ -117,10 +126,28 @@ public class shooterSubsystem extends SubsystemBase {
     public double getHoodPosition(){
         return hood.getEncoder().getPosition();
     }
+    //if kP, kI, or kD were changed on the dashboard, send the new values to the hood SPARK MAX
+    private void updateHoodPID(){
+        double p = kP.get();
+        double i = kI.get();
+        double d = kD.get();
+
+        if (p != lastKP || i != lastKI || d != lastKD) {
+            SparkMaxConfig pidConfig = new SparkMaxConfig();
+            pidConfig.closedLoop.pid(p, i, d);
+            hood.configure(pidConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+            lastKP = p;
+            lastKI = i;
+            lastKD = d;
+        }
+    }
     //sets published network tables to constantly get flywheel and hood values
     @Override
     public void periodic(){
         shooterSpeed.set(flywheel.getEncoder().getVelocity());
         hoodPosition.set(getHoodPosition());
+        updateHoodPID();
     }
+    
 }

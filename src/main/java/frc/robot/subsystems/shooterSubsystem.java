@@ -67,7 +67,7 @@ public class shooterSubsystem extends SubsystemBase {
 
         //setDefault() only sets a value if none exists yet, so values typed in Elastic aren't wiped on reboot
         shooterSpeed.setDefault(0);
-        changeShooterSpeed.setDefault(0);
+        changeShooterSpeed.setDefault(7);
         hoodPosition.setDefault(0);
         changeHoodPosition.setDefault(0);
         kP.setDefault(0);
@@ -94,6 +94,7 @@ public class shooterSubsystem extends SubsystemBase {
         hoodConfig.idleMode(IdleMode.kBrake);
 
         hood.configure(hoodConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        hood.getEncoder().setPosition(0);
 
         hoodLoopController = hood.getClosedLoopController();
 
@@ -107,7 +108,6 @@ public class shooterSubsystem extends SubsystemBase {
 
     //shoot command, makes flywheel, hood, and indexer run at defined values
     public void Shoot(){
-        //currently both set to 5
         flywheel.setVoltage(changeShooterSpeed.get());
         setHoodPosition();
         indexer.setVoltage(5);
@@ -148,5 +148,6 @@ public class shooterSubsystem extends SubsystemBase {
         shooterSpeed.set(flywheel.getEncoder().getVelocity());
         hoodPosition.set(getHoodPosition());
         updateHoodPID();
-    }   
+    }
+    
 }

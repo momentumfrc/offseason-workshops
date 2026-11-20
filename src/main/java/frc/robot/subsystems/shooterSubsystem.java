@@ -148,6 +148,5 @@ public class shooterSubsystem extends SubsystemBase {
         shooterSpeed.set(flywheel.getEncoder().getVelocity());
         hoodPosition.set(getHoodPosition());
         updateHoodPID();
-    }
-    
+    }   
 }
